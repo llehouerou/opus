@@ -36,6 +36,9 @@ func (e Error) Error() string {
 		return fmt.Sprintf("opus: error getting WASM context (%d)", e)
 	}
 
+	wctx.mu.Lock()
+	defer wctx.mu.Unlock()
+
 	opusStrError := wctx.module.ExportedFunction("opus_strerror")
 	if opusStrError == nil {
 		// Handle case where function is not exported

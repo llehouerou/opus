@@ -81,6 +81,15 @@ type WasmFunctions struct {
 
 // wasmContext holds the shared Wasm runtime, module, and cached functions.
 type wasmContext struct {
+	// mu serializes every Wasm interaction. The runtime, the module and the
+	// cached api.Function handles below are process-wide, and wazero documents
+	// api.Function.Call as not goroutine-safe: calling the same handle from two
+	// goroutines reuses one callEngine and corrupts its Wasm stack, which takes
+	// the process down instead of returning an error. malloc/free also share a
+	// single linear memory. Encoders and decoders are therefore serialized
+	// against each other; each call is short (a 20ms Opus frame), so the lock is
+	// held only briefly.
+	mu        sync.Mutex
 	runtime   wazero.Runtime
 	module    api.Module
 	functions WasmFunctions // Changed from malloc/free fields + map to a struct

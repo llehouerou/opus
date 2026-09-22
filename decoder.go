@@ -57,7 +57,10 @@ func NewDecoder(sampleRate int, channels int) (*Decoder, error) {
 		if d.decoderPtr != 0 && d.wctx != nil && d.wctx.functions.Free != nil {
 			// Similar to Encoder, use context.Background() cautiously.
 			// Directly call Free here as freeMemory helper returns an error we can't easily handle in a finalizer.
+			// Finalizers run on the GC goroutine, so take the lock like any other caller.
+			d.wctx.mu.Lock()
 			_, finErr := d.wctx.functions.Free.Call(context.Background(), uint64(d.decoderPtr))
+			d.wctx.mu.Unlock()
 			if finErr != nil {
 				fmt.Printf("opus: error freeing Wasm decoder memory in finalizer: %v\n", finErr)
 			}
@@ -80,6 +83,8 @@ func (dec *Decoder) Init(sampleRate int, channels int) error {
 		return fmt.Errorf("wasm context or module not initialized in decoder")
 	}
 	ctx := context.Background()
+	dec.wctx.mu.Lock()
+	defer dec.wctx.mu.Unlock()
 
 	opusDecoderGetSize := dec.wctx.functions.OpusDecoderGetSize
 	if opusDecoderGetSize == nil {
@@ -202,6 +207,8 @@ func (dec *Decoder) Decode(data []byte, pcm []int16) (int, error) {
 	}
 
 	ctx := context.Background()
+	dec.wctx.mu.Lock()
+	defer dec.wctx.mu.Unlock()
 	// pcmLenBytes := len(pcm) * 2 // 2 bytes per int16. This is for current length, cap is for max.
 	// Max possible output size based on capacity
 	pcmAllocSizeBytes := cap(pcm) * 2
@@ -255,6 +262,8 @@ func (dec *Decoder) DecodeFloat32(data []byte, pcm []float32) (int, error) {
 	}
 
 	ctx := context.Background()
+	dec.wctx.mu.Lock()
+	defer dec.wctx.mu.Unlock()
 	// pcmLenBytes := len(pcm) * 4 // 4 bytes per float32. For current length.
 	pcmAllocSizeBytes := cap(pcm) * 4 // For capacity
 
@@ -301,6 +310,8 @@ func (dec *Decoder) DecodeFEC(data []byte, pcm []int16) (int, error) {
 	}
 
 	ctx := context.Background()
+	dec.wctx.mu.Lock()
+	defer dec.wctx.mu.Unlock()
 	pcmAllocSizeBytes := cap(pcm) * 2
 	pcmDataForWasm := make([]byte, pcmAllocSizeBytes)
 	pcmPtr, err := dec.wctx.writeToMemory(ctx, pcmDataForWasm)
@@ -343,6 +354,8 @@ func (dec *Decoder) DecodeFECFloat32(data []byte, pcm []float32) (int, error) {
 	}
 
 	ctx := context.Background()
+	dec.wctx.mu.Lock()
+	defer dec.wctx.mu.Unlock()
 	pcmAllocSizeBytes := cap(pcm) * 4
 	pcmDataForWasm := make([]byte, pcmAllocSizeBytes)
 	pcmPtr, err := dec.wctx.writeToMemory(ctx, pcmDataForWasm)
@@ -385,6 +398,8 @@ func (dec *Decoder) DecodePLC(pcm []int16) (int, error) {
 	}
 
 	ctx := context.Background()
+	dec.wctx.mu.Lock()
+	defer dec.wctx.mu.Unlock()
 	pcmAllocSizeBytes := cap(pcm) * 2
 	pcmDataForWasm := make([]byte, pcmAllocSizeBytes)
 	pcmPtr, err := dec.wctx.writeToMemory(ctx, pcmDataForWasm)
@@ -428,6 +443,8 @@ func (dec *Decoder) DecodePLCFloat32(pcm []float32) (int, error) {
 	}
 
 	ctx := context.Background()
+	dec.wctx.mu.Lock()
+	defer dec.wctx.mu.Unlock()
 	pcmAllocSizeBytes := cap(pcm) * 4
 	pcmDataForWasm := make([]byte, pcmAllocSizeBytes)
 	pcmPtr, err := dec.wctx.writeToMemory(ctx, pcmDataForWasm)
@@ -467,6 +484,8 @@ func (dec *Decoder) LastPacketDuration() (int, error) {
 	}
 
 	ctx := context.Background()
+	dec.wctx.mu.Lock()
+	defer dec.wctx.mu.Unlock()
 	samplesPtr, err := dec.wctx.allocateInt32Ptr(ctx) // Use method from wasmContext
 	if err != nil {
 		return 0, err

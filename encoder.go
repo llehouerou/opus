@@ -54,7 +54,10 @@ func NewEncoder(sampleRate int, channels int, application Application) (*Encoder
 			// The CloseWasmContext should be the primary mechanism for cleanup.
 			// Finalizers are a fallback.
 			// Directly call Free here as freeMemory helper returns an error we can't easily handle in a finalizer.
+			// Finalizers run on the GC goroutine, so take the lock like any other caller.
+			e.wctx.mu.Lock()
 			_, finErr := e.wctx.functions.Free.Call(context.Background(), uint64(e.encoderPtr))
+			e.wctx.mu.Unlock()
 			if finErr != nil {
 				// Log error, as we can't return it from a finalizer
 				fmt.Printf("opus: error freeing Wasm encoder memory in finalizer: %v\n", finErr)
@@ -66,6 +69,9 @@ func NewEncoder(sampleRate int, channels int, application Application) (*Encoder
 }
 
 func (enc *Encoder) init(ctx context.Context, sampleRate int, channels int, application Application) error {
+	enc.wctx.mu.Lock()
+	defer enc.wctx.mu.Unlock()
+
 	if enc.encoderPtr != 0 {
 		return fmt.Errorf("opus encoder already initialized")
 	}
@@ -139,6 +145,8 @@ func (enc *Encoder) Encode(pcm []int16, data []byte) (int, error) {
 	}
 
 	ctx := context.Background()
+	enc.wctx.mu.Lock()
+	defer enc.wctx.mu.Unlock()
 	samplesPerChannel := len(pcm) / enc.channels
 	if enc.wctx == nil {
 		return 0, errEncUninitialized // Or a more specific error
@@ -208,6 +216,8 @@ func (enc *Encoder) EncodeFloat32(pcm []float32, data []byte) (int, error) {
 	}
 
 	ctx := context.Background()
+	enc.wctx.mu.Lock()
+	defer enc.wctx.mu.Unlock()
 	if enc.wctx == nil {
 		return 0, errEncUninitialized
 	}
@@ -261,6 +271,9 @@ func (enc *Encoder) EncodeFloat32(pcm []float32, data []byte) (int, error) {
 // --- Generic CTL Getters/Setters ---
 
 func (enc *Encoder) setCtlInt32(ctlFunc api.Function, value int32) error {
+	enc.wctx.mu.Lock()
+	defer enc.wctx.mu.Unlock()
+
 	if enc.encoderPtr == 0 || enc.wctx == nil {
 		return errEncUninitialized
 	}
@@ -280,6 +293,9 @@ func (enc *Encoder) setCtlInt32(ctlFunc api.Function, value int32) error {
 }
 
 func (enc *Encoder) getCtlInt32(ctlFunc api.Function) (int32, error) {
+	enc.wctx.mu.Lock()
+	defer enc.wctx.mu.Unlock()
+
 	if enc.encoderPtr == 0 || enc.wctx == nil {
 		return 0, errEncUninitialized
 	}
@@ -462,6 +478,8 @@ func (enc *Encoder) Reset() error {
 		return fmt.Errorf("bridge_encoder_reset_state not found in Wasm functions cache")
 	}
 	ctx := context.Background()
+	enc.wctx.mu.Lock()
+	defer enc.wctx.mu.Unlock()
 	results, err := resetFunc.Call(ctx, uint64(enc.encoderPtr))
 	if err != nil {
 		return fmt.Errorf("bridge_encoder_reset_state call failed: %w", err)
