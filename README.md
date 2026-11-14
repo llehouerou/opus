@@ -1,6 +1,6 @@
 [![Test](https://github.com/meokit/opus/actions/workflows/test.yml/badge.svg)](https://github.com/meokit/opus/actions/workflows/test.yml)
 
-This is a fork of `gopkg.in/hraban/opus.v2`, modified to use a WASM build of libopus with wazero, removing the CGo dependency. The modified version is hosted at [github.com/jj11hh/opus](https://github.com/meokit/opus).
+This is a fork of `gopkg.in/hraban/opus.v2`, modified to use a WASM build of libopus with wazero, removing the CGo dependency. The modified version is hosted at [github.com/meokit/opus](https://github.com/meokit/opus); this copy is published as `github.com/llehouerou/opus`.
 
 ## Go wrapper for Opus
 
@@ -37,9 +37,7 @@ This wrapper interacts with a WASM build of the xiph.org opus library for:
 ### Import
 
 ```go
-import "github.com/meokit/opus"
-// or, if you prefer to use the tagged version:
-// import "github.com/meokit/opus/v1"
+import "github.com/llehouerou/opus"
 ```
 
 ### Encoding
@@ -128,8 +126,8 @@ for i := 0; i < n; i++ {
 ```
 
 To handle packet loss from an unreliable network, see the
-[DecodePLC](https://pkg.go.dev/github.com/jj11hh/opus#Decoder.DecodePLC) and
-[DecodeFEC](https://pkg.go.dev/github.com/jj11hh/opus#Decoder.DecodeFEC)
+[DecodePLC](https://pkg.go.dev/github.com/llehouerou/opus#Decoder.DecodePLC) and
+[DecodeFEC](https://pkg.go.dev/github.com/llehouerou/opus#Decoder.DecodeFEC)
 options.
 
 ### Streams (and Files)
@@ -165,7 +163,7 @@ for {
 }
 ```
 
-See https://pkg.go.dev/github.com/jj11hh/opus#Stream for further info.
+See https://pkg.go.dev/github.com/llehouerou/opus#Stream for further info.
 
 ### "My .ogg/.opus file doesn't play!" or "How do I play Opus in VLC / mplayer / ...?"
 
@@ -189,9 +187,7 @@ This libopus wrapper _does_ come with code for _decoding_ an OGG/Opus stream. Ju
 ### API Docs
 
 Go wrapper API reference:
-https://pkg.go.dev/github.com/jj11hh/opus
-// or for v1.0.0:
-// https://pkg.go.dev/github.com/jj11hh/opus/v1
+https://pkg.go.dev/github.com/llehouerou/opus
 
 Full libopus C API reference:
 https://www.opus-codec.org/docs/opus_api-1.1.3/
